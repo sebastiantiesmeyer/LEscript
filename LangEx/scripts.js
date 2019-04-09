@@ -1,5 +1,13 @@
 //list of all default languages and button memory:
-var languages = ['English','Dutch','French','other...'];
+var languages = ["Spanish",'Mandarin',
+'Japanese','Russian','Bengali ','Portuguese','Arabic' ,
+'Punjabi','German','French','Turkish','Italian','Polish',
+'Greek','Swedish','Czech','Hungarian'];
+languages.sort();
+languages = ['English','Dutch'].concat(languages).concat(['other...']);
+
+var proficiencies = {'L': ['B','I','A'],
+                  'T': ['A','N']};
 
 var buttonsL = [];
 var buttonsT = [];
@@ -27,20 +35,41 @@ function expandDdn(e) {
   } 
 
 function add_ddn(learn){
-    var id = "section"+learn;
-    var div = document.getElementById(id);
-    var btn =document.createElement("BUTTON");   // Create a <button> element
-    btn.innerHTML = "add language";                   // Insert text
-    btn.onclick= function(e){expandDdn(e)};
-    btn.setAttribute("class","dropbtn");
-    var btnId = ((learn == 'L') ?  "btn"+learn+((buttonsL.length).toString()) : "btn"+learn+((buttonsT.length).toString()));
-    btn.setAttribute("id",btnId);
-    var p =document.createElement("p");   
 
-    p.appendChild(btn);  
-    div.appendChild(p);  
-    fillContent(learn);
-    (learn == 'L') ? buttonsL.push(btnId) : buttonsT.push(btnId);
+  var id = "section"+learn;
+  var div = document.getElementById(id);
+  var btn =document.createElement("BUTTON");   // Create a <button> element
+  btn.innerHTML = "add language";                   // Insert text
+  btn.onclick= function(e){expandDdn(e)};
+  btn.setAttribute("class","dropbtn");
+  var btnId = ((learn == 'L') ?  "btn"+learn+((buttonsL.length).toString()) : "btn"+learn+((buttonsT.length).toString()));
+  btn.setAttribute("id",btnId);
+  var p =document.createElement("p");   
+
+  p.appendChild(btn);  
+  
+  var radios = document.createElement("div");
+  radios.className = "radios";
+  radios.id = "radios"+learn+((((learn == 'L') ?  buttonsL.length : buttonsT.length).toString()));
+  
+  var len = ((proficiencies[learn]).length);
+    for (var i =0;i<len;i++){
+      var radio = document.createElement('input');
+      radio.setAttribute('type', 'radio');
+      if (!i) {radio.setAttribute("checked","checked")};
+    radio.setAttribute('name','prof'+learn+(((learn == 'L') ?  buttonsL : buttonsT).length).toString());
+    radio.setAttribute('value',proficiencies[learn][i]);
+    var label = document.createElement("label");
+    label.setAttribute("for",radio.id);
+    label.innerHTML = proficiencies[learn][i]+':';
+    radios.appendChild(label);
+    //radio.innerHTML(proficiencies[learn][i]);
+    radios.appendChild(radio);
+  }
+  p.appendChild(radios);
+  div.appendChild(p);  
+  fillContent(learn);
+  (learn == 'L') ? buttonsL.push(btnId) : buttonsT.push(btnId);
 
 }
 
@@ -65,10 +94,12 @@ function fillContent(learn){
 
 function selectLanguage(e){
     id = e.target.parentNode.id.replace("ddn", "btn");
-    //if (document.getElementById(id).innerHTML=="add language"){    add_ddn(learn);    }
     if (document.getElementById(id).innerHTML==="add language"){
         var learn = id[3];
         add_ddn(learn)
     };
+    document.getElementById(id.replace("btn","radios" )).style.display = "inline";//.toggle("show");
     document.getElementById(id).innerHTML = e.target.innerHTML;
 }
+
+

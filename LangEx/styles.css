@@ -6,6 +6,7 @@
     font-size: 16px;
     border: none;
     cursor: pointer;
+    display: inline;
   }
   
   /* Dropdown button on hover & focus */
@@ -28,6 +29,11 @@
     box-shadow: 0px 8px 16px 0px rgba(0,0,0,0.2);
     z-index: 1;
   }
+
+  .radios{
+    display: none;
+    margin-left: 20vw;
+  }
   
   /* Links inside the dropdown */
   .dropdown-content a {
@@ -43,11 +49,26 @@
   /* Show the dropdown menu (use JS to add this class to the .dropdown-content container when the user clicks on the dropdown button) */
   .show {display:block;} 
   
-  .column_margin{
-    width: 15%;
-    background-color: #fff1ff;
+.sides{
+  width: 100vw;
+  background: #ffd090;
+  /* position : absolute;
+  width: 25%;
+  background: #ffd090;*/
+  height: 100vh; 
 }
-.column{
-    width: 70%;
-    background-color: #fff1f1;
+
+.center{
+  width: 80%;
+  max-width: 960px;
+  margin-left: auto;
+  margin-right: auto;
+  height: 100vh; 
+
+  background: #fffff0;
 }
+
+.row{
+  height: 100%;
+}
+
