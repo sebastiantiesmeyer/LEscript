@@ -1,16 +1,37 @@
  /* Dropdown Button */
- .dropbtn {
-    background-color: #3498DB;
-    color: white;
-    padding: 16px;
-    font-size: 16px;
-    border: none;
-    cursor: pointer;
-    display: inline;
-  }
-  
+ .dropbtn,.footbtn {
+  background-color: rgb(110, 105, 98);
+  color: white;
+  padding: 16px;
+  font-size: 16px;
+  border: none;
+  cursor: pointer;
+  display: inline;
+  width: 140px;  
+  margin-left: 1vw;
+
+}
+
+.footbtn {
+  background-color: #3030A5;
+  color: white;
+  padding: 16px;
+  font-size: 16px;
+  border: none;
+  cursor: pointer;
+  display: inline-block;
+  width: 140px;
+  margin-right: 10vw;
+  float: right;
+}
+
   /* Dropdown button on hover & focus */
   .dropbtn:hover, .dropbtn:focus {
+    background-color: #2980B9;
+  }
+
+  /* Dropdown button on hover & focus */
+  .footbtn:hover, .footbtn:focus {
     background-color: #2980B9;
   }
   
@@ -32,7 +53,7 @@
 
   .radios{
     display: none;
-    margin-left: 20vw;
+    margin-left: 3vw;
   }
   
   /* Links inside the dropdown */
@@ -63,8 +84,8 @@
   max-width: 960px;
   margin-left: auto;
   margin-right: auto;
+  padding: 1vw;
   height: 100vh; 
-
   background: #fffff0;
 }
 
@@ -72,3 +93,29 @@
   height: 100%;
 }
 
+label {
+  display: inline-block;
+  width: 10px;
+  position: relative;
+  top: -15px;  
+}
+
+input[type=radio] {
+  display: inline-block;
+  width: 30px;
+  margin-right: 4vw;
+  padding-top: 15px;
+
+}
+input[type=text]{
+  display: none;
+  width: 140px;
+  margin-left: 2vw;
+  position: relative;
+  top: -10px;  
+}
+
+.headerbox{
+  margin-right: 30vw;
+  float: right;
+}
