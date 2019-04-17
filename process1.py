@@ -9,7 +9,7 @@ Created on Wed Apr 10 23:18:23 2019
 import pandas as pd
 import numpy as np
 import re
-import copy
+from copy import deepcopy
 import networkx as nx
 import matplotlib.pyplot as plt
 
@@ -17,6 +17,7 @@ class person():
     """ a person that has languages is wants to practice and teach..."""
     def __init__(self, l_p, l_t, id_number):
         self.id = id_number;
+        self.occupied = [False, False]
         self.l_p = l_p
         self.l_t = l_t
         self.t_p = None
@@ -29,6 +30,7 @@ class table():
         self.has_teacher = False
         self.has_pupil = False
         self.id = id_number
+        self.people = []
         
         
 def load_sheet(name):
@@ -37,6 +39,7 @@ def load_sheet(name):
 
 def extract_languages(string):
     string = re.split('\W+',string)  
+    string = [s for s in string if s != '']
     return string
 
 def clean_pool(pool):
@@ -100,61 +103,60 @@ def draw_tables(pool,t_1,t_2):
             G.add_edge(str(p.id)+'_p',str(p.id)+'_t') 
 
     nx.draw(G,  with_labels=True)
-    
-def fit_pool(pool,solution = [] , t_1 = [], t_2 = [],bad_tables = [], bad_people =[], id_number = 0, init = False):
-    todo = pool.copy()
-    
-    bad_tables_cp = copy.deepcopy(bad_tables)
-    bad_people_cp = copy.deepcopy(bad_people)
-    
-    for i in range(len(pool)):
-        #some stopping criteria
-        if (len(bad_tables)> len(pool)*2):
-            return [todo, solution, t_1, t_2, bad_tables, bad_people]
-        print(i,len(pool)*2,len(bad_tables))
+ 
+        
+def corrcoef(data):
+    return np.outer(data.flatten(),data.flatten())
 
-        pool_cp = copy.deepcopy(pool)
-        p = pool_cp.pop(i)   
-        solution_cp = copy.deepcopy(solution)
-        
-        #add the person as a new freeby:
-        for lp in p.l_p:     
-            t_1_cp = copy.deepcopy(t_1)
-            t1 = table(lp,0,id_number)
-            t1.has_pupil=True
-            id_number+=1
-            p.t_p = t1
-            t_1_cp.append(t_1_cp)
-            bad_tables_cp.append(t_1_cp)
-            
-            for lt in p.l_t:
-                t_2_cp = copy.deepcopy(t_2)
-                t2 = table(lt,1,id_number)
-                t2.has_teacher=True
-                p.t_t = t2
-                id_number+=1
-                t_2_cp.append(t2)
-                bad_tables_cp.append(t_2_cp)
-                bad_people_cp.append(p)
-                
-                solution_cp.append(p)
-#                draw_tables(solution_cp,t_1_cp,t_2_cp)
-#                plt.pause(0.01)
-                
-                fit_pool(pool_cp,solution_cp,t_1_cp,t_2_cp,bad_tables_cp,bad_people_cp,id_number=id_number)
-                
-                            
-                
-            
-        
-        else:
-            pass
-        
-    return solution
-        
+def create_weights(data):
+    w = np.zeros([data.flatten().shape[0]]*2)
+    w.diag = data.flatten()
+    #punish double-learner or double-exister:
+    w[0::4,0::4]=-10
+    w[1::4,1::4]=-10
+    w[0::4,1::4]=-10
+    w[1::4,0::4]=-10
+
+    w[2::4,2::4]=-10
+    w[3::4,3::4]=-10
+    w[3::4,2::4]=-10
+    w[2::4,3::4]=-10
+
+    
+    return(w)
+#def create_dataset(pool):
+    
+
+def upgrade(data):
+    
+    delta = np.zeros(data.shape)
+    
 
 
 name = "/home/sebastian/Documents/LEscript/sheet.xlsx"
 pool = create_pool(load_sheet(name))
-fit_pool(pool,[],[],[],init=True)
+#data=create_dataset(pool)
+inter = [p.l_p for p in pool]+[p.l_t for p in pool]
+langs = []
+for i in inter:
+    langs+= i
+langs=set(langs)
+
+data = np.zeros([len(pool),len(langs),2,2])
+#dataset shape: [n_people, n_languages, (teach/practice), n_timeslots].
+
+for i,p in enumerate(pool):
+    for j,l_p in enumerate(p.l_p):
+        for k,lang in enumerate(langs):
+            if lang==l_p:
+                data[i,k,0,:]=1
+        
+for i,p in enumerate(pool):
+    for j,l_t in enumerate(p.l_t):
+        for k,lang in enumerate(langs):
+            if lang==l_t:
+                data[i,k,1,:]=1
+        
+
+#return(data)
 
