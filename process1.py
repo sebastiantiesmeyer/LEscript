@@ -126,12 +126,40 @@ def create_weights(data):
     return(w)
 #def create_dataset(pool):
     
+def sigmoid(x):
+    return(1/(1+np.exp(-x)))
 
 def upgrade(data):
     
     delta = np.zeros(data.shape)
     
-
+    #no 2 timeslots at the same time:
+    delta[:,:,:,0]=data[:,:,:,0]-data[:,:,:,1]
+    delta[:,:,:,1]=data[:,:,:,1]-data[:,:,:,0]
+    
+    #no 2 practice/teach sessions at the same time:
+    delta[:,:,0,:]=data[:,:,0,:]-data[:,:,1,:]
+    delta[:,:,1,:]=data[:,:,1,:]-data[:,:,0,:]
+    
+    #only 1 "teach language"/"practice language":
+    
+    mean_p = data[:,:,0,:].sum(1)
+    mean_t = data[:,:,1,:].sum(1)
+    
+    delta[:,:,0,:] += data[:,:,0,:] - np.tile(mean_p[:,np.newaxis,:],[1,16,1])
+    delta[:,:,1,:] += data[:,:,1,:] - np.tile(mean_t[:,np.newaxis,:],[1,16,1])
+    
+    langs_p = data[:,:,0].sum(-1)-data[:,:,1].sum(-1)
+    
+    
+    delta += np.random.normal(size=delta.shape)/50
+    delta/=50
+    
+    return delta
+    
+    
+    
+  
 
 name = "/home/sebastian/Documents/LEscript/sheet.xlsx"
 pool = create_pool(load_sheet(name))
@@ -157,6 +185,15 @@ for i,p in enumerate(pool):
             if lang==l_t:
                 data[i,k,1,:]=1
         
+data1=data.copy()
+
+for i in range(100):
+    data1 = data1+upgrade(data1)
+    data1[data1<0]=0
+    data1[data1>1]=1
+    data1=data1**1.5
+    plt.imshow(data1[0,:,:,0])
+    plt.pause(0.01)
 
 #return(data)
 
