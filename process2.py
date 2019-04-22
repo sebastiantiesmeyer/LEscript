@@ -15,6 +15,7 @@ import matplotlib.pyplot as plt
 
 weights = []
 sittings = []
+persons = []
 
 class person():
     """ a person that has languages is wants to practice and teach..."""
@@ -39,6 +40,8 @@ class person():
                     w = weight(-1,[self.sittings[i],self.sittings[j]])
                     self.sittings[i].weights.append(w)
                     self.sittings[j].weights.append(w)
+        persons.append(self)
+    
                     
 def sigmoid(x):
     return(1/(1+np.exp(-x)))               
@@ -135,10 +138,11 @@ def create_pool(sheet):
 
 def draw_tables():
     G = nx.DiGraph()
-    node_colors = []
+    node_sizes = []
+    node_colors=[s.person.id/len(persons) for s in sittings]
     edge_colors = []
     for i in range(len(sittings)):
-        node_colors.append(float(sittings[i].s))
+        node_sizes.append(float(sittings[i].s>0.5)*300+100)
         G.add_node(i)
         
     for i in range(len(sittings)):
@@ -153,31 +157,56 @@ def draw_tables():
         
 
 
-    print(node_colors)
+    print(node_colors, node_sizes)
         
-    nx.draw(G, node_color=node_colors, width = 1, edge_color=edge_colors, with_labels=True)
+    nx.draw(G, node_color=node_colors, node_size=node_sizes, width = 1, edge_color=edge_colors, with_labels=True)
     
 def print_energy():
     print(sum([w.ends[0].s*w.ends[0].s*w.w for w in weights]))
-        
+ 
+def choose_energy(energies,theta):
+    energies=np.array(energies)
+    energies+=0
+    energies/=energies.sum()
+    print(set(energies))
+    return np.random.choice(range(energies.shape[0]),p=energies )
+       
 def print_results():
     for i in range(len(sittings)):
         if sittings[i].s==1:
             print(sittings[i].person.id,sittings[i].l,sittings[i].t,sittings[i].p)
     
-def update_round(eta=0.1):
-    for i in range(len(sittings)):
-        sittings[i].prep_delta(eta)    
-    for i in range(len(sittings)):
-        sittings[i].update()
-    print_energy()
-    for i in range(len(weights)):
-        if weights[i].w<0:
-            weights[i].w-=1
+def update_round(theta=0):
+    
+    #iterate over persons:
+    for person in persons:
+        
+        for s in person.sittings: s.p = -1 
+        
+        energies = [sum([w.ends[0].s*w.ends[0].s*w.w for w in weights])]
+        counts = [[None,None]]
+    
+        #get the energy of all possible combinations:
+        for i in range(len(person.sittings)-1):
+            (person.sittings[i].p)=1.0
+            for j in range(i+1,len(person.sittings)):
+                person.sittings[j].p=1
+                
+                energy =sum([w.ends[0].s*w.ends[0].s*w.w for w in weights])
+                energies.append(energy)
+                counts.append([i,j])
+                
+                person.sittings[j].p=-1
+            person.sittings[i].p=-1
+        winner = choose_energy(energies,theta)
+        if counts[winner][0] is not None:
+            print(counts[winner])
+            person.sittings[counts[winner][0]].p=1
+            person.sittings[counts[winner][1]].p=1
 
-name = "/home/sebastian/Documents/LEscript/sheet.xlsx"
+name = "sheet.xlsx"
 pool = create_pool(load_sheet(name))
-[update_round(i*0.001) for i in range(500)] 
+[update_round(i*0.1) for i in range(10)] 
 draw_tables()
 print_results()
 

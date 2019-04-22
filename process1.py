@@ -143,19 +143,12 @@ def upgrade(data):
     
     #only 1 "teach language"/"practice language":
     
-#    mean_p = data[:,:,0,:].sum(1)
-#    mean_t = data[:,:,1,:].sum(1)
-#    
-#    delta[:,:,0,:] += data[:,:,0,:] - np.tile(mean_p[:,np.newaxis,:],[1,16,1])
-#    delta[:,:,1,:] += data[:,:,1,:] - np.tile(mean_t[:,np.newaxis,:],[1,16,1])
+    mean_p = data[:,:,0,:].sum(1)
+    mean_t = data[:,:,1,:].sum(1)
     
-    langs_p_1 = data[:,:,0,0].sum(-1)
-    langs_p_2 = data[:,:,0,1].sum(-1)
-    langs_t_1 = data[:,:,1,0].sum(-1)
-    langs_t_2 = data[:,:,1,1].sum(-1)
-    
-    langs_1 = langs_p_1/langs_t_1
-    langs_2 = langs_p_2/langs_t_2
+    delta[:,:,0,:] += data[:,:,0,:] - np.tile(mean_p[:,np.newaxis,:],[1,16,1])
+    delta[:,:,1,:] += data[:,:,1,:] - np.tile(mean_t[:,np.newaxis,:],[1,16,1])
+
     
     delta += np.random.normal(size=delta.shape)/50
     delta/=50
@@ -166,14 +159,14 @@ def upgrade(data):
     
   
 
-name = "/home/sebastian/Documents/LEscript/sheet.xlsx"
+name = "sheet.xlsx"
 pool = create_pool(load_sheet(name))
 #data=create_dataset(pool)
 inter = [p.l_p for p in pool]+[p.l_t for p in pool]
 langs = []
 for i in inter:
     langs+= i
-langs=set(langs)
+langs=list(set(langs))
 
 data = np.zeros([len(pool),len(langs),2,2])
 #dataset shape: [n_people, n_languages, (teach/practice), n_timeslots].
@@ -192,13 +185,47 @@ for i,p in enumerate(pool):
         
 data1=data.copy()
 
-#for i in range(100):
-#    data1 = data1+upgrade(data1)
-#    data1[data1<0]=0
-#    data1[data1>1]=1
-#    data1=data1**1.5
-#    plt.imshow(data1[0,:,:,0])
-#    plt.pause(0.01)
+for i in range(100):
+    
+    delta = np.zeros(data1.shape)
+    
+    #no 2 timeslots at the same time:
+    delta[:,:,:,0]=data1[:,:,:,0]-data1[:,:,:,1]
+    delta[:,:,:,1]=data1[:,:,:,1]-data1[:,:,:,0]
+    
+    #no 2 practice/teach sessions at the same time:
+    delta[:,:,0,:]=data1[:,:,0,:]-data1[:,:,1,:]
+    delta[:,:,1,:]=data1[:,:,1,:]-data1[:,:,0,:]
+    
+    #only 1 "teach language"/"practice language":
+    
+    mean_p = data1[:,:,0,:].sum(1)
+    mean_t = data1[:,:,1,:].sum(1)
+    
+    delta[:,:,0,:] += data1[:,:,0,:] - np.tile(mean_p[:,np.newaxis,:],[1,16,1])
+    delta[:,:,1,:] += data1[:,:,1,:] - np.tile(mean_t[:,np.newaxis,:],[1,16,1])
 
+    
+    delta += np.random.normal(size=delta.shape)/50
+    delta/=50
+    
+    
+    data1 = data1+upgrade(data1)
+        
+    langs_p_1 = data1[:,:,0,0].sum(0)
+    langs_p_2 = data1[:,:,0,1].sum(0)
+    langs_t_1 = data1[:,:,1,0].sum(0)
+    langs_t_2 = data1[:,:,1,1].sum(0)
+    langs_1 = langs_p_1/langs_t_1
+    langs_2 = langs_p_2/langs_t_2
+    
+    
+    
+    data1[data1<0]=0
+    data1[data1>1]=1
+    data1=data1**1.5
+    plt.imshow(data1[0,:,:,0])
+    plt.pause(0.01)
+    break
 #return(data)
 
