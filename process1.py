@@ -143,14 +143,19 @@ def upgrade(data):
     
     #only 1 "teach language"/"practice language":
     
-    mean_p = data[:,:,0,:].sum(1)
-    mean_t = data[:,:,1,:].sum(1)
+#    mean_p = data[:,:,0,:].sum(1)
+#    mean_t = data[:,:,1,:].sum(1)
+#    
+#    delta[:,:,0,:] += data[:,:,0,:] - np.tile(mean_p[:,np.newaxis,:],[1,16,1])
+#    delta[:,:,1,:] += data[:,:,1,:] - np.tile(mean_t[:,np.newaxis,:],[1,16,1])
     
-    delta[:,:,0,:] += data[:,:,0,:] - np.tile(mean_p[:,np.newaxis,:],[1,16,1])
-    delta[:,:,1,:] += data[:,:,1,:] - np.tile(mean_t[:,np.newaxis,:],[1,16,1])
+    langs_p_1 = data[:,:,0,0].sum(-1)
+    langs_p_2 = data[:,:,0,1].sum(-1)
+    langs_t_1 = data[:,:,1,0].sum(-1)
+    langs_t_2 = data[:,:,1,1].sum(-1)
     
-    langs_p = data[:,:,0].sum(-1)-data[:,:,1].sum(-1)
-    
+    langs_1 = langs_p_1/langs_t_1
+    langs_2 = langs_p_2/langs_t_2
     
     delta += np.random.normal(size=delta.shape)/50
     delta/=50
@@ -187,13 +192,13 @@ for i,p in enumerate(pool):
         
 data1=data.copy()
 
-for i in range(100):
-    data1 = data1+upgrade(data1)
-    data1[data1<0]=0
-    data1[data1>1]=1
-    data1=data1**1.5
-    plt.imshow(data1[0,:,:,0])
-    plt.pause(0.01)
+#for i in range(100):
+#    data1 = data1+upgrade(data1)
+#    data1[data1<0]=0
+#    data1[data1>1]=1
+#    data1=data1**1.5
+#    plt.imshow(data1[0,:,:,0])
+#    plt.pause(0.01)
 
 #return(data)
 
