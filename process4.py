@@ -18,8 +18,8 @@ tables = []
 persons = []
 languages = set()
 
-class person():
-    """ a person that has languages is wants to practice and teach..."""
+class Person():
+    """ a Person that has languages is wants to practice and teach..."""
     def __init__(self, l_p, l_t, id_number):
         self.id = id_number;
 
@@ -29,7 +29,7 @@ class person():
         persons.append(self)
         
     def get_degree(self):
-        return([len(l) for l in self.potential])
+        return([len(l)  if (self.tables[i] is None) else np.inf for [i,l] in enumerate(self.potential)])
         
     def remove_table(self,table):
         for time in [0,1]:
@@ -41,14 +41,50 @@ class person():
                 self.tables[time]=None
                 
     def cleanup(self):
-        '''remove this person from the solution.  '''
+        '''remove this Person from the Solution.  '''
         for t in self.potential:
             for table in t:
                 table.remove_person(self)
+        for table in self.tables:
+            if table is not None:
+                table.remove_person(self)
+                
+    def seat(self,table):
+        
+        time = table.t
+        
+        if self.tables[time] is not None:
+            raise Exception('Already busy at time '+str(time))
+        
+        lang = table.lang
+        prac = ([lang in l for l in self.langs])
+        
+        print(self.id,lang,prac,time)
+        
+        if not any(prac):
+            raise Exception("The person does not speak that language : ( ")
+        
+        
+        prac = np.argmax(prac)
+        
+        table.seat(self,prac)
+        
+        for table_ in self.potential[time]:
+            table_.remove_person(self)
+        for table_ in self.potential[1-time]:
+            if table_.lang in self.langs[prac]:
+                table_.remove_person(self)
+        
+        self.tables[time] = table
+
+        self.potential[time]=[]
+        self.potential[1-time]=[table_ for table_ in self.potential[1-time] if not table_.lang in self.langs[prac] ]
+        self.langs[prac]=[]
+        
 
  
-class table():
-    """A table that has a language and a number of persons."""
+class Table():
+    """A Table that has a language and a number of persons."""
     def __init__(self,t,lang,all_people):
         self.t = t
         self.lang = lang
@@ -58,11 +94,11 @@ class table():
             for i in [0,1]:
                 if lang in p.langs[i]:
                     self.potential[i].append(p)
-                    p.potential[i].append(self)
+                    p.potential[t].append(self)
         #tables.append(self)
         
     def get_degree(self):
-        return ([len(p) for p in self.potential])
+        return ([len(p) if not(self.people[i]) else np.inf for i,p in enumerate(self.potential)])
         
     def get_id(self):
         return('_'.join([p.id for p in self.people[0]+self.people[1]]))
@@ -70,6 +106,9 @@ class table():
     def cleanup(self):
         for potential in self.potential:
             for pers in potential:
+                pers.remove_table(self)        
+        for person in self.people:
+            for pers in person:
                 pers.remove_table(self)
     
     def remove_person(self,person):        
@@ -79,9 +118,13 @@ class table():
             if person in self.people[time]:
                 self.people[time].remove(person)   
  
+    def seat(self, person, prac):
+        
+        self.potential[prac].remove(person)
+        self.people[prac].append(person)
 
-class solution():
-    """a solution that gets passed through a recursive solver"""
+class Solution():
+    """a Solution that gets passed through a recursive solver"""
     def __init__(self,tables,persons):
         self.tables=tables
         self.persons=persons
@@ -96,7 +139,7 @@ class solution():
         return('-'.join([t.get_id for t in self.tables]))
         
     def __eq__(self, other):
-        if isinstance(other,solution):
+        if isinstance(other,Solution):
             return self.get_id==other.get_id
         else:
             return False
@@ -117,7 +160,7 @@ def create_pool(sheet):
     id_number = 0;
     for i,row in sheet.iterrows():
         try:
-            p = person(extract_languages(row[4])+extract_languages(row[5]),extract_languages(row[6]),id_number)
+            p = Person(extract_languages(row[4])+extract_languages(row[5]),extract_languages(row[6]),id_number)
             pool.append(p)
             [[languages.add(lang) for lang in p.langs[i]] for i in [0,1]]
             id_number+=1
@@ -126,7 +169,7 @@ def create_pool(sheet):
 
 
     for l in languages:
-        [tables.append(table(i,l,pool)) for i in [0,1]]
+        [tables.append(Table(i,l,pool)) for i in [0,1]]
         
     return (pool)
 
@@ -134,28 +177,36 @@ def create_pool(sheet):
     
 def clean(world):
     changed = False
-    deletable = []
-    for t in world.tables:
-        if 0 in t.get_degree(): 
 
+    for t in world.tables:
+        
+        degrees = t.get_degree()
+        occupied = [len(persons) for persons in t.people]
+
+        if not all ([degrees[i] or occupied[i] for i in [0,1]]): 
+            
             t.cleanup()
             changed=True
-            
-            deletable.append(t)            
-    for d in deletable:
-        world.tables.remove(d)
-    deletable=[]
-    
-    for p in world.persons:
-        if 0 in p.get_degree():
 
+            world.tables.remove(t)  
+            
+            break
+            
+    for p in world.persons:
+        
+        degrees = p.get_degree()
+        occupied = [table is not None for table in p.tables]
+        
+        if not all ([degrees[i] or occupied[i] for i in [0,1]]):
+
+            p.cleanup()
+            
             changed=True
 
-            deletable.append(p)            
-    for d in deletable:
-        world.persons.remove(d)
+            world.persons.remove(p)         
             
-    
+            break
+
     if changed:
         return clean(world)
     else:
@@ -165,93 +216,116 @@ def clean(world):
 
 def solve(world,done = [],champ = None, first_call=False):
     """ Solve the world problem using a greedy approach. Let's hope it works : )  """
-    winner = [world.tables[0],world.tables[0].get_degree()[0],0]
     
-    degrees_tables = (np.array([t.get_degree() for t in world.tables]).min(1))
-    degrees_people = (np.array([p.get_degree() for p in world.persons]).min(1))
     
-    if first_call:
-        degrees_tables=degrees_tables[::2]
-        degrees_people=degrees_people[::2]
-        idcs = (np.argsort(np.concatenate([degrees_tables,degrees_people])))
-
-    else:        
-        idcs = (np.argsort(np.concatenate([degrees_tables,degrees_people])))
-
-    for i,idx in enumerate(idcs):
+    
+    if world is not None:
         
-        if i<idcs.shape[0]//2+1:
+        for p in range(len(world.persons)):
+            for time in [0,1]:
+                for t in range(len(world.persons[p].potential[time])):
+                    world_ = deepcopy(world)
+                    world_.persons[p].seat(world_.persons[p].potential[time][t])
+    
+#                    print(world_.get_goodness())#,world.persons[p].potential)
+                    
+                    solve(clean(world_),[],champ)
+#                break
+#            break
+
             
-            if idx<degrees_tables.shape[0]:                 
-                #is the candidate a table?
-                table_ = world.tables[idx]    
-                #is the session in question practice or teach?
-                practice = np.argmin(table_.get_degree())
-                
-                for i_p in range(len(table_.potential[practice])):
-                    
-                    #create new world for the next recursive step
-                    world_local=deepcopy(world)
-                    
-                    #find the table of interest
-                    table_ = world_local.tables[idx]
-                    
-                    #find the persons of question:
-                    person_ = table_.potential[practice][i_p]
-                             
-                    #seat the person at the table
-                    person_.tables[table_.t]=table_
-                    # & vice versa
-                    table_.people[practice].append(person_)
-                    
-                    removables =[]
-                    #remove person from all tables at the same time:
-                    for table__ in person_.potential[table_.t]:
-                        table__.remove_person(person_)
-                    #remove person from all tables that are of the same practice category:
-                    for table__ in person_.potential[1-table_.t]:
-                        if (table__.lang in person_.langs[practice]):
-                            table__.remove_person(person_)
-                            removables.append(table__)
-                            
-                    for table__ in removables:
-                        person_.potential[1-table_.t].remove(table__)
-                            
-                    person_.potential[table_.t]   = []
-                    
-                    world_local = clean(world_local)
-                    
-                    if not (world_local is None):
-                        champ = solve(world_local,[],champ)
-                        
-                        if champ.get_goodness()<world_local.get_goodness():
-                            return world_local
-                    return champ
-                        
-                    
-                    
-                
+        
+    
+    
+#    winner = [world.tables[0],world.tables[0].get_degree()[0],0]
+#    
+#    degrees_tables = np.array([min(t.get_degree())  for t in world.tables], dtype=np.float)
+#    degrees_people = np.array([min(p.get_degree())  for p in world.persons], dtype=np.float)
+#    degrees_tables[np.isnan(degrees_tables)] = np.inf
+#    degrees_people[np.isnan(degrees_people)] = np.inf
+#    
+#    print(degrees_tables, degrees_people)
+#    
+#    if first_call:
+#        degrees_tables=degrees_tables[::2]
+#        degrees_people=degrees_people[::2]
+#        idcs = (np.argsort(np.concatenate([degrees_tables,degrees_people])))
+#
+#    else:        
+#        idcs = (np.argsort(np.concatenate([degrees_tables,degrees_people])))
+#
+#    for i,idx in enumerate(idcs):
+#        
+#        if i<idcs.shape[0]//2+1:
+#            
+#            if idx<degrees_tables.shape[0]:                 
+#                #is the candidate a Table?
+#                Table_ = world.tables[idx]    
+#                #is the session in question practice or teach?
+#                practice = np.argmin(Table_.get_degree())
+#                
+#                for i_p in range(len(Table_.potential[practice])):
+#                    
+#                    #create new world for the next recursive step
+#                    world_local=deepcopy(world)
+#                    
+#                    #find the Table of interest
+#                    Table_ = world_local.tables[idx]
+#                    
+#                    #find the persons of question:
+#                    Person_ = Table_.potential[practice][i_p]
+#                             
+#                    #seat the Person at the Table
+#                    Person_.tables[Table_.t]=Table_
+#                    # & vice versa
+#                    Table_.people[practice].append(Person_)
+#                    
+#                    removables =[]
+#                    #remove Person from all tables at the same time:
+#                    for Table__ in Person_.potential[Table_.t]:
+#                        Table__.remove_person(Person_)
+#                    #remove Person from all tables that are of the same practice category:
+#                    for Table__ in Person_.potential[1-Table_.t]:
+#                        if (Table__.lang in Person_.langs[practice]):
+#                            Table__.remove_person(Person_)
+#                            removables.append(Table__)
+#                            
+#                    for Table__ in removables:
+#                        Person_.potential[1-Table_.t].remove(Table__)
+#                            
+#                    Person_.potential[Table_.t]   = []
+#                    
+#                    world_local = clean(world_local)
+#                    
+#                    if not (world_local is None):
+#                        champ = solve(world_local,[],champ)
+#                        
+#                        if champ.get_goodness()<world_local.get_goodness():
+#                            return world_local
+#        return champ
+#                        
+#                    
+#                    
+#                
 #            else:
-#                person = world.persons[idx-degrees_tables.shape[0]]
-#                practice = np.argmin(table.get_degree())
-#                for table in person.potential[practice]:
+#                Person = world.persons[idx-degrees_tables.shape[0]]
+#                practice = np.argmin(Table.get_degree())
+#                for Table in Person.potential[practice]:
 #                    pass
 
-        
-    print(winner)
-    
+            
     return champ
 
 name = "sheet.xlsx"
 pool = create_pool(load_sheet(name))
-world = solution(tables,persons)
+world = Solution(tables,persons)
 print(len(world.persons))
 world = clean(deepcopy(world))
 print(len(world.persons))
 
 champ = solve(world,[],world,first_call=True)
 #draw_tables()
-print_results()
+#print_results()
 
 
 #
@@ -271,7 +345,7 @@ print_results()
 #def draw_tables():
 #    G = nx.DiGraph()
 #    node_sizes = []
-#    node_colors=[s.person.id/len(persons) for s in sittings]
+#    node_colors=[s.Person.id/len(persons) for s in sittings]
 #    edge_colors = []
 #    for i in range(len(sittings)):
 #        node_sizes.append(float(sittings[i].s>0.5)*300+100)
