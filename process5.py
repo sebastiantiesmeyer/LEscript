@@ -24,12 +24,12 @@ class Person():
         self.id = id_number;
 
         self.langs = [l_t,l_p]
-        self.tables=[None,None]
+        self.tables=[[],[]]
         self.potential = [[],[]]
         persons.append(self)
         
     def get_degree(self):
-        return([len(l)  if (self.tables[i] is None) else np.inf for [i,l] in enumerate(self.potential)])
+        return([len(l)  if not(self.tables[i]) else np.inf for [i,l] in enumerate(self.potential)])
         
     def remove_table(self,table):
         time=table.t
@@ -57,7 +57,7 @@ class Person():
         
         time = table.t
         
-        if self.tables[time] is not None:
+        if self.tables[time]:
             raise Exception('Already busy at time '+str(time))
         
         lang = table.lang
@@ -79,11 +79,11 @@ class Person():
                 
         table.seat(self,prac)
         
-        self.tables[time] = table
+        self.tables[time].append(table)
 
         self.potential[time]=[]
         self.potential[1-time]=[table_ for table_ in self.potential[1-time] if not table_.lang in self.langs[prac] ]
-        self.langs[prac]=[]
+#        self.langs[prac]=[]
         
 
  
@@ -140,7 +140,7 @@ class Solution():
         for table in self.tables:
             ppl = ([len(t) for t in table.people])
             if all(ppl):
-                gof += np.mean(ppl) - np.std(ppl)
+                gof += np.mean(ppl) - np.std(ppl)/2
         return gof
             
                 
@@ -152,7 +152,7 @@ class Solution():
     
     def get_id(self):
         return('-'.join([t.get_id for t in self.tables]))
-        
+
     def __eq__(self, other):
         if isinstance(other,Solution):
             return self.get_id==other.get_id
@@ -184,6 +184,8 @@ def create_pool(sheet):
             id_number+=1
         except:
             pass
+        if i>6:
+            break
 
 
     for l in languages:
@@ -205,24 +207,29 @@ def clean(world):
         
         if not all ([(degrees[i] or occupied[i]) for i in [0,1]]): 
 #            print(degrees,occupied)
-            t.cleanup()
-            world.tables.remove(t)  
+            refs = gc.get_referrers(t)
+#            print(refs)
+            for r in refs:
+                r.remove(t)
             return clean(world)
             
     for p in world.persons:
 
-        degrees =  [len(potential) for potential in p.potential]
-        occupied = [table is not None for table in p.tables]
+        degrees =  [any([any([l in [p.lang for p in pot] for pot in p.potential]) for l in lang]) for lang in p.langs]
+        occupied = [any([any([l in [p.lang for p in pot] for pot in p.tables]) for l in lang]) for lang in p.langs]
         
-        
-        
+#        print(degrees,occupied)        
         if not all ([degrees[i] or occupied[i] for i in [0,1]]):
 #            print('p',degrees,occupied)
-            p.cleanup()
-            
-            world.persons.remove(p)         
+            refs = gc.get_referrers(p)
+#            print(refs)
+            for r in refs:
+                if not str(type(r))=="<class 'cell'>":
+                    r.remove(p)
+                
+
             return clean(world)
-#    asdf
+        
     return (world)
 
 
@@ -245,61 +252,62 @@ def solve(world,done = [],champ = None, first_call=False):
                     
                     world_.persons[p].seat(world_.persons[p].potential[time][t])
                     world_ = clean(world_)
-#                    print(world_.get_goodness())#,world.persons[p].potential)
+
                     if champ.get_goodness()<world_.get_goodness():    
                         champ = deepcopy(world_)                  
                         print(world_.get_goodness())
                         
                     champ  = solve(world_,[],champ)
-                    print([[len(t.people[0]),len(t.people[1])] for t in world_.tables])
+            break
+
 
     return(champ)
 #            break
-
-def solve_hierarchy(world,done = [],champ = None, first_call=False):
-    """ Solve the world problem using a greedy approach. Let's hope it works : )  """
-                
-    degrees_tables = np.array([min(t.get_degree())  for t in world.tables], dtype=np.float)
-    degrees_people = np.array([min(p.get_degree())  for p in world.persons], dtype=np.float)   
-    
-    print(degrees_tables,degrees_people)
-        
-    if first_call:
-        degrees_tables=degrees_tables[::2]
-        degrees_people=degrees_people[::2]
-        idcs = (np.argsort(np.concatenate([degrees_tables,degrees_people])))
-        iterlist = [0]
-    else:
-        iterlist = [0,1]  
-        idcs = (np.argsort(np.concatenate([degrees_tables,degrees_people])))
-   
-#    if world is not None:
-  
-    for i,idx in enumerate(idcs):
-        
-        if i<idcs.shape[0]//2+1:
-            
-            if idx<degrees_tables.shape[0]:   
-
-                
-#        for p in range(len(world.persons)):
-#            for time in iterlist:
-#                for t in range(len(world.persons[p].potential[time])):
-#                    
-#                    world_ = deepcopy(world)
-#                    
-#                    world_.persons[p].seat(world_.persons[p].potential[time][t])
-#                    world_ = clean(world_)
-##                    print(world_.get_goodness())#,world.persons[p].potential)
-#                    if champ.get_goodness()<world_.get_goodness():    
-#                        champ = deepcopy(world_)                  
-#                        print(world_.get_goodness())
-#                        
-#                    champ  = solve(world_,[],champ)
-##                    print([[len(t.people[0]),len(t.people[1])] for t in world_.tables])
-
-    return(champ)
-#            break
+#
+#def solve_hierarchy(world,done = [],champ = None, first_call=False):
+#    """ Solve the world problem using a greedy approach. Let's hope it works : )  """
+#                
+#    degrees_tables = np.array([min(t.get_degree())  for t in world.tables], dtype=np.float)
+#    degrees_people = np.array([min(p.get_degree())  for p in world.persons], dtype=np.float)   
+#    
+#    print(degrees_tables,degrees_people)
+#        
+#    if first_call:
+#        degrees_tables=degrees_tables[::2]
+#        degrees_people=degrees_people[::2]
+#        idcs = (np.argsort(np.concatenate([degrees_tables,degrees_people])))
+#        iterlist = [0]
+#    else:
+#        iterlist = [0,1]  
+#        idcs = (np.argsort(np.concatenate([degrees_tables,degrees_people])))
+#   
+##    if world is not None:
+#  
+#    for i,idx in enumerate(idcs):
+#        
+#        if i<idcs.shape[0]//2+1:
+#            
+#            if idx<degrees_tables.shape[0]:   
+#
+#                
+##        for p in range(len(world.persons)):
+##            for time in iterlist:
+##                for t in range(len(world.persons[p].potential[time])):
+##                    
+##                    world_ = deepcopy(world)
+##                    
+##                    world_.persons[p].seat(world_.persons[p].potential[time][t])
+##                    world_ = clean(world_)
+###                    print(world_.get_goodness())#,world.persons[p].potential)
+##                    if champ.get_goodness()<world_.get_goodness():    
+##                        champ = deepcopy(world_)                  
+##                        print(world_.get_goodness())
+##                        
+##                    champ  = solve(world_,[],champ)
+###                    print([[len(t.people[0]),len(t.people[1])] for t in world_.tables])
+#
+#    return(champ)
+##            break
 
             
         
@@ -389,10 +397,9 @@ world = Solution(tables,persons)
 print([[len(t.potential[0]),len(t.potential[1])] for t in world.tables])
 world = clean(deepcopy(world))
 print([[len(t.potential[0]),len(t.potential[1])] for t in world.tables])
+print([p.langs for p in world.persons])#print(len(world.persons))
 
-#print(len(world.persons))
-
-champ = solve_hierarchy(world,[],world,first_call=True)
+champ = solve(world,[],world,first_call=True)
 #draw_tables()
 #print_results()
 
