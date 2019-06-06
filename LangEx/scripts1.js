@@ -16,26 +16,19 @@ var buttonsL = [];
 var buttonsT = [];
 
 
-/* When the user clicks on the button,
-toggle between hiding and showing the dropdown content */
-// function expandDdn(e) {
-//     var id = (e.target.id).replace("btn", "ddn");
-//     document.getElementById(id).classList.toggle("show");
-//   }
-  
-  // Close the dropdown menu if the user clicks outside of it
-//   window.onclick = function(event) {
-//     if (!event.target.matches('.dropbtn')) {
-//       var dropdowns = document.getElementsByClassName("dropdown-content");
-//       var i;
-//       for (i = 0; i < dropdowns.length; i++) {
-//         var openDropdown = dropdowns[i];
-//         if (openDropdown.classList.contains('show')) {
-//           openDropdown.classList.remove('show');
-//         }
-//       }
-//     }
-//   } 
+function getRadioVal(radios) {
+  var val;
+  // alert(radios.childNodes.length)
+
+  // loop through list of radio buttons
+  for (var i=0, len=radios.childNodes.length; i<len; i++) {
+      if (radios.childNodes[i].checked ) { // radio checked?
+          val = radios.childNodes[i].value; // if so, hold its value in val
+          break; // and break out of for loop
+      }
+  }
+  return val; // return value of checked radio or undefined if none checked
+}
 
 //add a new dropdown menu to 'teach' (arg="T") or 'learn' (arg="L")
 function add_ddn(learn){
@@ -87,7 +80,7 @@ function add_ddn(learn){
     label.setAttribute("for",radio.id);
     label.innerHTML = prof_written[learn][i];
     radios.appendChild(label);
-    //radio.innerHTML(proficiencies[learn][i]);
+
     radios.appendChild(radio);
   }
   var inputBox = document.createElement('input');
@@ -104,25 +97,7 @@ function add_ddn(learn){
 
 }
 
-// //fill all the options into the newly created dropdown menu:
-// function fillContent(learn){
-//     var id = "section"+learn;
-//     var div = document.getElementById(id);
-//     var ddn = document.createElement("div");
-//     ddn.setAttribute("class","dropdown-content");
-//     var ddnId = ((learn == 'L') ?  "ddn"+learn+((buttonsL.length).toString()) : "ddn"+learn+((buttonsT.length).toString()));
-//     ddn.setAttribute("id",ddnId);
-//     for (var i =0;i<languages.length;i++){
-//         var a = document.createElement("a");
 
-//         a.onclick= function(e){selectLanguage(e)};
-//         a.innerHTML = languages[i];
-
-//         ddn.appendChild(a);
-//     }
-//     div.appendChild(ddn);
-
-// }
 
 //listens to events from the language dropdown menu.
 function selectLanguage(e){
@@ -143,6 +118,7 @@ function selectLanguage(e){
   else{
     document.getElementsByName(id.replace("btn","other" ))[0].style.display = "none";
   }
+
     document.getElementById(id.replace("btn","radios" )).style.display = "inline";
     // document.getElementById(id).innerHTML = e.target.innerHTML;    
     document.getElementById(id).style.backgroundColor = "rgb( 73,175, 55)";
@@ -153,23 +129,30 @@ function reset(){
 }
 
 function submit(){
-    var XHR = new XMLHttpRequest();  
-  var list = ((document.getElementsByClassName("headerbox")));
-  if (!list[2].value.includes("@")){
+
+  const data = new FormData();
+
+  const personal_info = {}
+
+  var item_list = ((document.getElementsByClassName("headerbox")));
+  if (!item_list[2].value.includes("@")){
     alert("Please enter a valid e-mail address!");
     return;
   }
-  var data = [];
-  for (let item of list){
+
+  for (let item of item_list){
     if (item.value === ""){
       alert("Please fill out your personal contact information.");
       return;
     }
     else{
-      data.push(item.value)
+      personal_info[item.id]=item.value
     }
   }    
-  data.push('L:');
+
+
+  langs_learn = {};
+
   if (buttonsL.length==1){
     alert("Please select at least one language to practice.");
     return;
@@ -183,8 +166,8 @@ function submit(){
     }
     else if (text==="other..."){
       var textId = item.replace("btn","other");
-      var value = (document.getElementsByName(textId)[0].value);
-      switch (value){
+      var text = (document.getElementsByName(textId)[0].value);
+      switch (text){
         case "":{
           alert ("Please fill in your 'other' language.");
         return;}
@@ -192,23 +175,23 @@ function submit(){
           alert ("Please fill in your 'other' language.");
         return;}
       default:{
-        data.push(value);
+        true;
       }
       }
     }
     else {
-      data.push(text);
+      // data.push(text);
     }
-    data.push(document.getElementsByName(item.replace('btn','prof'))[0].value);
 
+    langs_learn[text] = (getRadioVal(document.getElementById(item.replace("btn","radios"))));
   }
 
+  langs_teach = {};
 
   if (buttonsT.length==1){
     alert("Please select at least one language to teach.");
     return;
   };
-  data.push('T:');
 
   for (let item of buttonsT){
     text = (document.getElementById(item).selectedOptions[0].value);
@@ -217,8 +200,8 @@ function submit(){
     }
     else if (text==="other..."){
       var textId = item.replace("btn","other");
-      var value = (document.getElementsByName(textId)[0].value);
-      switch (value){
+      var text = (document.getElementsByName(textId)[0].value);
+      switch (text){
         case "":{
           alert ("Please fill in your 'other' language.");
         return;}
@@ -226,29 +209,48 @@ function submit(){
           alert ("Please fill in your 'other' language.");
         return;}
       default:{
-        data.push(value);
+        true;
       }
       }
     }
-    else {
-      data.push(text);
-    }
-    data.push(document.getElementsByName(item.replace('btn','prof'))[0].value);
+    langs_teach[text] = (getRadioVal(document.getElementById(item.replace("btn","radios"))));
 
   }
-  // Define what happens on successful data submission
-  XHR.addEventListener('load', function(event) {
-    alert('Yeah! Data sent and response loaded.');
-  });
 
-  // Define what happens in case of error
-  XHR.addEventListener('error', function(event) {
-    alert('Oops! Something went wrong.');
-  });
+  const xhr = new XMLHttpRequest();
+  // const xhr_get = new XMLHttpRequest();
 
-  XHR.open('POST', 'http://127.0.0.1:5000/');
-  XHR.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
 
-  XHR.send(data);
-//   alert(data);
+  data.append('input',JSON.stringify({'personal_info':personal_info,
+                                        'langs_learn':langs_learn,
+                                      'langs_teach':langs_teach}));
+
+
+  const handleResponse = ({ target }) => {
+    // Do something useful here...
+
+    if (target.readyState === XMLHttpRequest.DONE) {
+      if (target.status === 200) {
+        alert(target.responseText);
+      } else {
+        alert('something broke ....')
+      }
+    }  }
+  
+  xhr.addEventListener('message', handleResponse)
+  // xhr_get.addEventListener('message', handleResponse)
+
+  xhr.onreadystatechange = handleResponse;
+
+  xhr.open('POST', 'http://127.0.0.1:5000/api');
+  // xhr_get.open('GET', 'http://127.0.0.1:5000/api');
+  
+  xhr.send(data);
+  // xhr_get.send(data);
+
+  // var i=0
+  // while (i<4){
+  //   alert('_'+xhr_get.readyState+'_'+xhr_get.status+'_'+xhr_get.responseText)
+  //   i=i+1;
+  // }
 }

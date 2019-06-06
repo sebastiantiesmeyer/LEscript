@@ -1,0 +1,1 @@
+{"personal_info":{"first_name":"S","second_name":"T","mail":"sebastian.tiesmeyer@gmail.com"},"langs_learn":{"Punjabi":"B"},"langs_teach":{"Bengali":"A"}}
